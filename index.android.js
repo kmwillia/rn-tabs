@@ -3,7 +3,8 @@ import {
 	AppRegistry,
 	StyleSheet,
 	Text,
-	View
+	View,
+	ListView,
 } from 'react-native';
 
 import TabNav from './TabNav/TabNav';
@@ -17,6 +18,16 @@ class App extends Component {
 				{ name: 'bananas', title: 'Bananas' },
 				{ name: 'cherries', title: 'Cherries' },
 			],
+			dataSource: new ListView.DataSource({
+				rowHasChanged: (r1, r2) => r1 !== r2,
+			}).cloneWithRows([
+				'a', 'b', 'c', 'd', 'e',
+				'f', 'g', 'h', 'i', 'j',
+				'k', 'l', 'm', 'n', 'o',
+				'p', 'q', 'r', 's', 't',
+				'u', 'v', 'w', 'x', 'y',
+				'z',
+			]),
 		};
 	}
 
@@ -32,6 +43,10 @@ class App extends Component {
 	_renderScene(tab, navigator) {
 		switch(tab.name) {
 			case 'apples':
+				return <ListView
+					dataSource={this.state.dataSource}
+					renderRow={rowData => <Text>rowData</Text>}
+					/>;
 			case 'bananas':
 			case 'cherries':
 			default:

@@ -5,77 +5,90 @@ import ReactNative, {
 	View,
 	Text,
 	TouchableOpacity,
-	UIManager,
+	ActivityIndicator,
 } from 'react-native';
 
 import styles from './Styles';
 
-
 /**TabNavBar
  * @prop {Array} tabs - Array of objects to use as the Navigator's route stack
+ * @prop {Function} renderScene - Function that will render and return the current
+ * scene will be provided [route] and [navigator] as arguments
  * @prop {Object} initialTab - The initial tab for navigation
- * @prop {Function} renderScene - Function that will render and return the current scene will be provided [route] and [navigator] as arguments
+ * @prop {Function} renderPlaceholder - Function that will render and return a scene's
+ * placeholder element, so on initial load a full render of each tab isn't necessary
  */
-class TabNav extends Component {
+export default class TabNav extends Component {
 	constructor(props) {
 		super(props);
 		this.state = {
-			navBarHeight: 0,
 			selectedTab: this.props.initialTab || this.props.tabs[0],
+			navigatedScenes: {},
 		};
 	}
 
 	render() {
-		return <Navigator
-			initialRouteStack={this.props.tabs}
-			initialRoute={this.props.initialTab || this.props.tabs[0]}
-			renderScene={this._renderScene.bind(this)}
-			configureScene={(route, routeStack) => Navigator.SceneConfigs.HorizontalSwipeJump}
-			navigationBar={this._getNavigationBar()}
-			onWillFocus={route => this.setState({selectedTab: route})}
-			/>;
+        return <View style={styles.rootContainer}>
+			{this.navigator
+				? <TabNavBar
+					navigator={this.navigator}
+					selectedTab={this.state.selectedTab}
+					tabs={this.props.tabs}
+					/>
+				: null}
+			<Navigator
+				ref={navigator => this.navigator = navigator}
+		        initialRouteStack={this.props.tabs}
+				initialRoute={this.props.initialTab || this.props.tabs[0]}
+				renderScene={this._renderScene.bind(this)}
+				configureScene={(route, routeStack) => Navigator.SceneConfigs.HorizontalSwipeJump}
+				onWillFocus={this._onWillFocus.bind(this)}
+				sceneStyle={styles.sceneContainer}
+				/>
+		</View>;
 	}
 
-	_getNavigationBar() {
-		return <TabNavBar
-			onLayout={this._setNavBarHeight.bind(this)}
-			ref={(ref) => this.navBar = ref}
-			selectedTab={this.state.selectedTab} />;
-	}
-
-	_setNavBarHeight(e) {
-		const height = e.nativeEvent.layout.height;
+	_onWillFocus(route) {
+		let navigatedScenes = this.state.navigatedScenes;
+		navigatedScenes[route.name] = true;
 		this.setState({
-			navBarHeight: height,
+			selectedTab: route,
+			navigatedScenes,
 		});
 	}
 
 	_renderScene(route, navigator) {
-		if(this.props.renderScene) {
-			const sceneContainerStyles = [
-				styles.sceneContainer,
-				{marginTop: this.state.navBarHeight},
-			]
-			return <View style={sceneContainerStyles}>
-				{this.props.renderScene(route, navigator)}
-			</View>;
-		} else {
-			return <View style={styles.rootContainer}>
-				<Text>{'No renderScene function provided'}</Text>
-			</View>
+		if(!this.state.navigatedScenes[route.name]) {
+			// Only render the scene fully if it has been navigated to at least once
+			return this._renderPlaceholder(route);
 		}
+		return this.props.renderScene(route, navigator);
 	}
 
+	_renderPlaceholder(route) {
+		if(this.props.renderPlaceholder) {
+			return this.props.renderPlaceholder();
+		}
+		return <ActivityIndicator
+			animating={true}
+			size={'large'}
+			style={styles.placeholder}
+			/>
+	}
 }
+TabNav.propTypes = {
+	tabs: React.PropTypes.array.isRequired,
+	renderScene: React.PropTypes.func.isRequired,
+	initialTab: React.PropTypes.object,
+	renderPlaceholder: React.PropTypes.func,
+};
 
-export default TabNav;
 
 
 /**TabNavBar
  * @prop {Object} navigator - Navigator's navigator object for navigating the route stack
- * @prop {Object} navState - Information about the Navigator's current navigation state
  * @prop {Object} selectedTab - Currently selected tab
- * @prop {Function} onLayout - Callback for when the TabNavBar is layed out, so the scene's dimensions can be adjusted, and the TabNavBar can be pinned to the top
+ * @prop {Array} tabs - Array of tabs(routes) to display
  */
 class TabNavBar extends Component {
 	constructor(props) {
@@ -95,16 +108,17 @@ class TabNavBar extends Component {
 	}
 
 	render() {
-		return <View onLayout={this.props.onLayout} style={styles.tabNavBarContainer}>
+		return <View style={styles.tabNavBarContainer}>
 			{this._renderTabs()}
 		</View>;
 	}
 
+	// Render the tabs
 	_renderTabs() {
-		let navigator = this.props.navigator;
-		const navState = this.props.navState;
+		const navigator = this.props.navigator;
 		const selectedTab = this.state.selectedTab;
-		return navState.routeStack.map((route, index) => {
+		if(!navigator) return null;
+		return this.props.tabs.map((route, index) => {
 			let tabStyles = [
 				styles.tabContainer,
 				route === selectedTab ? styles.selectedTab : null,
@@ -121,5 +135,9 @@ class TabNavBar extends Component {
 	_onPressTab(route, e) {
 		this.props.navigator.jumpTo(route);
 	}
-
 }
+TabNavBar.propTypes = {
+	navigator: React.PropTypes.instanceOf(Navigator).isRequired,
+	selectedTab: React.PropTypes.object.isRequired,
+	tabs: React.PropTypes.array.isRequired,
+};

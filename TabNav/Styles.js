@@ -8,12 +8,11 @@ const styles = StyleSheet.create({
 	sceneContainer: {
 		flex: 1,
 	},
+	placeholder: {
+		padding: 16,
+	},
 	//TabBar
 	tabNavBarContainer: {
-		position: 'absolute',
-		top: 0,
-		left: 0,
-		right: 0,
 		flex: 0,
 		flexDirection: 'row',
 		backgroundColor: '#80acd7',
